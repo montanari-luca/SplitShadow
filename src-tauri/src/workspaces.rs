@@ -150,6 +150,9 @@ pub fn windows_on_target_display(backend: &dyn WindowBackend, target: WindowId) 
     Ok(all.into_iter().filter(|w| monitor_of(&monitors, w).map(|m| m.id) == Some(mon.id)).collect())
 }
 
+/// Captured windows plus the indices of a linked pair among them.
+pub type Captured = (Vec<WsWindow>, Option<(usize, usize)>);
+
 /// Snapshot windows into workspace entries. With `ids` the caller chose the windows,
 /// otherwise the target plus the frontmost others on its display, up to the limit.
 pub fn capture(
@@ -157,7 +160,7 @@ pub fn capture(
     target: WindowId,
     ids: Option<&[WindowId]>,
     link: Option<(WindowId, WindowId)>,
-) -> Result<(Vec<WsWindow>, Option<(usize, usize)>), String> {
+) -> Result<Captured, String> {
     let monitors = backend.monitors();
     let mut candidates = windows_on_target_display(backend, target)?;
     if !candidates.iter().any(|w| w.id == target) {
@@ -266,7 +269,7 @@ pub fn open(backend: &dyn WindowBackend, ws: &Workspace, opts: &OpenOptions) -> 
             Some(w) => {
                 let mon = monitors.iter().find(|m| m.id == entry.monitor).or_else(|| monitors.first());
                 if let Some(mon) = mon {
-                    let target = entry.rect.from_fractions(&mon.work_area);
+                    let target = entry.rect.scaled_into(&mon.work_area);
                     if backend.set_rect(w.id, target).is_ok() {
                         report.placed += 1;
                     }

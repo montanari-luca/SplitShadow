@@ -202,7 +202,7 @@ impl WindowBackend for WinBackend {
     }
 
     fn minimize(&self, id: WindowId) -> Result<(), String> {
-        unsafe { ShowWindow(hwnd(id), SW_MINIMIZE) };
+        let _ = unsafe { ShowWindow(hwnd(id), SW_MINIMIZE) };
         Ok(())
     }
 

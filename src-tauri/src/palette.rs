@@ -42,7 +42,7 @@ pub fn hide(app: &AppHandle) {
 pub fn show(app: &AppHandle) {
     let Some(w) = window(app) else { return };
     let state = app.state::<AppState>();
-    let target = state.backend.frontmost_window();
+    let target = crate::wm::pick_target(&*state.backend);
     let payload = ShowPayload {
         trusted: state.backend.is_trusted(),
         target_app: target.as_ref().map(|t| t.app.clone()),

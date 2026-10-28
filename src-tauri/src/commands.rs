@@ -104,10 +104,17 @@ pub fn delete_workspace(state: State<AppState>, name: String) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn finish_onboarding(state: State<AppState>) -> Result<(), String> {
-    let mut s = state.settings.lock().unwrap();
-    s.onboarded = true;
-    s.save(&state.settings_path)
+pub fn finish_onboarding(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+    {
+        let mut s = state.settings.lock().unwrap();
+        s.onboarded = true;
+        s.save(&state.settings_path)?;
+    }
+    // Closed here rather than from the page: the webview has no permission to close windows.
+    if let Some(w) = app.get_webview_window(windows::SETTINGS) {
+        w.close().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

@@ -81,7 +81,7 @@ fn target(state: &AppState) -> Result<WindowInfo, String> {
         .lock()
         .unwrap()
         .clone()
-        .ok_or_else(|| "No window was selected. Click a window, then open the palette.".to_string())
+        .ok_or_else(|| "There is no window to act on. Open a window in another app, then try again.".to_string())
 }
 
 /// Run one action. On success the palette is closed and focus returns to the target.
@@ -170,10 +170,10 @@ pub fn run(app: &AppHandle, action: Action) -> Result<String, String> {
             palette::hide(app);
             let report = workspaces::open(&*state.backend, &ws, &OpenOptions::default());
             state.link.unlink();
-            if let Some((i, j)) = ws.link {
-                if let (Some(Some(a)), Some(Some(b))) = (report.ids.get(i), report.ids.get(j)) {
-                    let _ = state.link.link_existing(*a, *b);
-                }
+            if let Some((i, j)) = ws.link
+                && let (Some(Some(a)), Some(Some(b))) = (report.ids.get(i), report.ids.get(j))
+            {
+                let _ = state.link.link_existing(*a, *b);
             }
             {
                 let mut store = state.workspaces.lock().unwrap();

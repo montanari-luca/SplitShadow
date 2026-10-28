@@ -94,3 +94,38 @@ pub fn monitor_for<'a>(monitors: &'a [Monitor], rect: &Rect) -> Option<&'a Monit
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
 }
+
+/// The window the palette should act on: the focused one, or when focus is on SplitShadow
+/// itself (its own settings window, or a tray click) the frontmost window of any other app.
+pub fn pick_target(backend: &dyn WindowBackend) -> Option<WindowInfo> {
+    backend.frontmost_window().or_else(|| backend.list_windows().into_iter().next())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fake::FakeBackend;
+
+    #[test]
+    fn target_is_the_focused_window() {
+        let b = FakeBackend::with_monitor(Rect::new(0.0, 0.0, 1000.0, 800.0));
+        b.add_window(1, "Notes", Rect::new(0.0, 0.0, 100.0, 100.0));
+        b.add_window(2, "Slack", Rect::new(0.0, 0.0, 100.0, 100.0));
+        *b.frontmost.lock().unwrap() = Some(2);
+        assert_eq!(pick_target(&*b).unwrap().id, 2);
+    }
+
+    #[test]
+    fn falls_back_to_the_topmost_other_window() {
+        let b = FakeBackend::with_monitor(Rect::new(0.0, 0.0, 1000.0, 800.0));
+        b.add_window(1, "Notes", Rect::new(0.0, 0.0, 100.0, 100.0));
+        b.add_window(2, "Slack", Rect::new(0.0, 0.0, 100.0, 100.0));
+        assert_eq!(pick_target(&*b).unwrap().id, 1);
+    }
+
+    #[test]
+    fn no_windows_means_no_target() {
+        let b = FakeBackend::with_monitor(Rect::new(0.0, 0.0, 1000.0, 800.0));
+        assert!(pick_target(&*b).is_none());
+    }
+}

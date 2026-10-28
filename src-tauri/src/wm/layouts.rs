@@ -27,10 +27,6 @@ impl Rect {
         (self.x + self.w / 2.0, self.y + self.h / 2.0)
     }
 
-    pub fn contains(&self, px: f64, py: f64) -> bool {
-        px >= self.x && px < self.right() && py >= self.y && py < self.bottom()
-    }
-
     /// Area of the intersection with another rect, 0 when disjoint.
     pub fn overlap_area(&self, other: &Rect) -> f64 {
         let w = self.right().min(other.right()) - self.x.max(other.x);
@@ -46,7 +42,7 @@ impl Rect {
     }
 
     /// This rect expressed as fractions of `area`.
-    pub fn to_fractions(&self, area: &Rect) -> Rect {
+    pub fn to_fractions(self, area: &Rect) -> Rect {
         Rect::new(
             (self.x - area.x) / area.w,
             (self.y - area.y) / area.h,
@@ -56,7 +52,7 @@ impl Rect {
     }
 
     /// Resolve fractions of `area` back to absolute coordinates.
-    pub fn from_fractions(&self, area: &Rect) -> Rect {
+    pub fn scaled_into(self, area: &Rect) -> Rect {
         Rect::new(
             area.x + self.x * area.w,
             area.y + self.y * area.h,
@@ -133,7 +129,7 @@ pub fn resize_about_center(current: &Rect, work: &Rect, step: f64) -> Rect {
 
 /// Move `rect` onto another monitor keeping its relative position and size.
 pub fn translate_between(rect: &Rect, from: &Rect, to: &Rect) -> Rect {
-    rect.to_fractions(from).from_fractions(to)
+    rect.to_fractions(from).scaled_into(to)
 }
 
 #[cfg(test)]
@@ -219,7 +215,7 @@ mod tests {
     fn fraction_round_trip() {
         let area = Rect::new(10.0, 20.0, 800.0, 600.0);
         let r = Rect::new(210.0, 170.0, 400.0, 300.0);
-        assert!(r.to_fractions(&area).from_fractions(&area).approx_eq(&r, 1e-9));
+        assert!(r.to_fractions(&area).scaled_into(&area).approx_eq(&r, 1e-9));
     }
 
     #[test]

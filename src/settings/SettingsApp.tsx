@@ -37,7 +37,7 @@ export function SettingsApp() {
   if (tab === "welcome") {
     return (
       <div className="h-full overflow-y-auto p-8">
-        <Welcome settings={s.settings} />
+        <Welcome s={s} />
       </div>
     );
   }
