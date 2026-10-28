@@ -8,8 +8,12 @@ use crate::state::AppState;
 pub const PALETTE: &str = "palette";
 pub const WIDTH: f64 = 680.0;
 pub const HEIGHT: f64 = 540.0;
-/// Distance from the window top to the vertical middle of the input bar.
-const INPUT_CENTER_OFFSET: f64 = 36.0;
+/// Transparent margin around the panel (the `p-1` in Palette.tsx).
+const PANEL_INSET: f64 = 4.0;
+/// Height of the panel with a full result list: input 64 + list 368 (8 rows of 44 plus
+/// padding, incl. its top border) + footer 37 + 2 outer borders.
+/// The panel is centered at this height, so the input bar stays put while the list shrinks.
+const PANEL_MAX_HEIGHT: f64 = 471.0;
 /// Ignore focus-loss events this long after showing, the OS can emit one while activating.
 const BLUR_GRACE: Duration = Duration::from_millis(250);
 
@@ -82,12 +86,55 @@ fn center_on_cursor_monitor(app: &AppHandle, w: &WebviewWindow) {
         return;
     };
     let scale = m.scale_factor();
-    let (mx, my) = (m.position().x as f64, m.position().y as f64);
-    let (mw, mh) = (m.size().width as f64, m.size().height as f64);
-    let (ww, wh) = (WIDTH * scale, HEIGHT * scale);
-    let x = mx + (mw - ww) / 2.0;
-    // Input bar centered vertically, then clamped so the result list stays on screen.
-    let ideal = my + mh / 2.0 - INPUT_CENTER_OFFSET * scale;
-    let y = ideal.min(my + mh - wh).max(my);
-    let _ = w.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+    let (x, y) = origin(
+        (m.position().x as f64, m.position().y as f64),
+        (m.size().width as f64, m.size().height as f64),
+        scale,
+    );
+    let _ = w.set_position(PhysicalPosition::new(x, y));
+}
+
+/// Top-left of the palette window, in physical pixels, for a monitor at `pos` of `size`.
+/// Centers the full-height panel on the monitor; on short screens the window is pushed up
+/// just enough to stay fully visible.
+fn origin(pos: (f64, f64), size: (f64, f64), scale: f64) -> (i32, i32) {
+    let (mx, my) = pos;
+    let (mw, mh) = size;
+    let x = mx + (mw - WIDTH * scale) / 2.0;
+    let ideal = my + mh / 2.0 - (PANEL_INSET + PANEL_MAX_HEIGHT / 2.0) * scale;
+    let y = ideal.min(my + mh - HEIGHT * scale).max(my);
+    (x.round() as i32, y.round() as i32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Vertical middle of the visible panel for a window placed at `y`.
+    fn panel_middle(y: i32, scale: f64) -> f64 {
+        y as f64 + (PANEL_INSET + PANEL_MAX_HEIGHT / 2.0) * scale
+    }
+
+    #[test]
+    fn panel_is_centered_on_a_laptop_screen() {
+        // 1470x956 points at 2x, primary display.
+        let (x, y) = origin((0.0, 0.0), (2940.0, 1912.0), 2.0);
+        assert_eq!(x, (2940.0 - 680.0 * 2.0) as i32 / 2);
+        assert!((panel_middle(y, 2.0) - 956.0).abs() <= 1.0);
+    }
+
+    #[test]
+    fn panel_is_centered_on_a_secondary_monitor() {
+        // Second 1920x1080 display to the right at 1x.
+        let (x, y) = origin((2940.0, 0.0), (1920.0, 1080.0), 1.0);
+        assert_eq!(x, 2940 + (1920 - 680) / 2);
+        assert!((panel_middle(y, 1.0) - 540.0).abs() <= 1.0);
+    }
+
+    #[test]
+    fn short_screens_keep_the_window_on_screen() {
+        let (_, y) = origin((0.0, 0.0), (1366.0, 600.0), 1.0);
+        assert!(y >= 0);
+        assert!(y as f64 + HEIGHT <= 600.0 || y == 0);
+    }
 }

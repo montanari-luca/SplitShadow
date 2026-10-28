@@ -154,7 +154,7 @@ export function Palette() {
         )}
 
         {rows.length > 0 && (
-          <div ref={list} className="max-h-[352px] overflow-y-auto border-t px-2 py-2" style={{ borderColor: "var(--border)" }}>
+          <div ref={list} className="max-h-[368px] overflow-y-auto border-t px-2 py-2" style={{ borderColor: "var(--border)" }}>
             {rows.map((s, i) => {
               const active = pending ? true : i === selected;
               return (
