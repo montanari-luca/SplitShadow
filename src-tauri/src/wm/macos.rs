@@ -459,3 +459,28 @@ impl Drop for WatchGuard {
         }
     }
 }
+
+#[cfg(test)]
+mod live {
+    use super::*;
+
+    /// Needs Accessibility permission for the test host; run with `--ignored`.
+    #[test]
+    #[ignore]
+    fn lists_real_windows_and_monitors() {
+        let b = MacBackend::new();
+        println!("trusted: {}", b.is_trusted());
+        let monitors = b.monitors();
+        println!("monitors: {}", monitors.len());
+        for m in &monitors {
+            println!("  #{} frame {:?} work {:?}", m.id, (m.frame.x, m.frame.y, m.frame.w, m.frame.h), (m.work_area.x, m.work_area.y, m.work_area.w, m.work_area.h));
+        }
+        let wins = b.list_windows();
+        println!("windows: {}", wins.len());
+        for w in wins.iter().take(8) {
+            println!("  {} (pid {}) {:?}", w.app, w.pid, (w.rect.x, w.rect.y, w.rect.w, w.rect.h));
+        }
+        println!("frontmost app: {:?}", b.frontmost_window().map(|w| w.app));
+        assert!(!monitors.is_empty());
+    }
+}

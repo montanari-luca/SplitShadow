@@ -3,6 +3,7 @@ use tauri_plugin_autostart::ManagerExt as _;
 
 use crate::settings::Settings;
 use crate::state::AppState;
+use crate::actions::{self, Action, PaletteContext};
 use crate::{hotkey, palette, windows};
 
 #[tauri::command]
@@ -25,6 +26,16 @@ pub fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings)
     settings.save(&state.settings_path)?;
     *state.settings.lock().unwrap() = settings.clone();
     Ok(settings)
+}
+
+#[tauri::command]
+pub fn palette_context(app: AppHandle) -> PaletteContext {
+    actions::context(&app)
+}
+
+#[tauri::command]
+pub fn run_action(app: AppHandle, action: Action) -> Result<String, String> {
+    actions::run(&app, action)
 }
 
 #[tauri::command]
@@ -61,6 +72,8 @@ pub fn app_version(app: AppHandle) -> String {
 pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         get_settings,
+        palette_context,
+        run_action,
         save_settings,
         palette_hide,
         open_settings,

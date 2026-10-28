@@ -1,3 +1,4 @@
+mod actions;
 mod commands;
 mod hotkey;
 mod palette;
@@ -39,8 +40,10 @@ pub fn run() {
             let settings_path = app.path().app_config_dir()?.join("settings.json");
             let settings = Settings::load(&settings_path).sanitized();
             let hotkey = settings.hotkey.clone();
+            let backend = wm::create_backend();
             app.manage(AppState {
-                backend: wm::create_backend(),
+                engine: wm::engine::Engine::new(backend.clone()),
+                backend,
                 target: Mutex::new(None),
                 settings: Mutex::new(settings),
                 settings_path,

@@ -3,10 +3,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use crate::settings::Settings;
+use crate::wm::engine::Engine;
 use crate::wm::{WindowBackend, WindowInfo};
 
 pub struct AppState {
     pub backend: Arc<dyn WindowBackend>,
+    pub engine: Engine,
     /// Window that was frontmost when the palette opened.
     pub target: Mutex<Option<WindowInfo>>,
     pub settings: Mutex<Settings>,
