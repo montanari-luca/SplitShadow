@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SplitShadow",
+  "version": "0.1.0",
+  "identifier": "com.mintflow.splitshadow",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "palette",
+        "title": "SplitShadow",
+        "url": "index.html",
+        "width": 680,
+        "height": 540,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "publisher": "MintFlow Technologies",
+    "copyright": "MintFlow Technologies",
+    "category": "Utility",
+    "shortDescription": "A fast, keyboard-driven window manager.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "infoPlist": "Info.plist"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcwRERFMTZDNjMxQUJFMjUKUldRbHZocGpiT0hkY05NZ04xMENTbXp3ODdCSzdaYkJhSUlqUnVXek9YNkhTYUI2cHdEZ29HTlQK",
+      "endpoints": [
+        "https://raw.githubusercontent.com/montanari-luca/MintFlow-Releases/refs/heads/main/splitshadow.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
