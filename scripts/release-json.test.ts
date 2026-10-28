@@ -36,4 +36,11 @@ describe("artifactCandidates", () => {
     expect(first.keys).toEqual(["darwin-aarch64", "darwin-x86_64"]);
     expect(first.name).toContain("1.0.0");
   });
+
+  it("maps a plain host build to its own architecture", () => {
+    const mac = artifactCandidates("1.0.0", "arm64").mac;
+    expect(mac[mac.length - 1].keys).toEqual(["darwin-aarch64"]);
+    const intel = artifactCandidates("1.0.0", "x64").mac;
+    expect(intel[intel.length - 1].keys).toEqual(["darwin-x86_64"]);
+  });
 });

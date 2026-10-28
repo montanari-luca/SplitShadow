@@ -26,12 +26,13 @@ export function buildManifest({ version, notes = "", pubDate, baseUrl, artifacts
 }
 
 /** Pure: which bundle files to look for, relative to src-tauri. */
-export function artifactCandidates(version) {
+export function artifactCandidates(version, arch = process.arch) {
+  const hostKey = arch === "arm64" ? "darwin-aarch64" : "darwin-x86_64";
   return {
     mac: [
       { from: "target/universal-apple-darwin/release/bundle/macos/SplitShadow.app.tar.gz", name: `SplitShadow_${version}_universal.app.tar.gz`, keys: ["darwin-aarch64", "darwin-x86_64"] },
       { from: "target/aarch64-apple-darwin/release/bundle/macos/SplitShadow.app.tar.gz", name: `SplitShadow_${version}_aarch64.app.tar.gz`, keys: ["darwin-aarch64"] },
-      { from: "target/release/bundle/macos/SplitShadow.app.tar.gz", name: `SplitShadow_${version}_macos.app.tar.gz`, keys: [] },
+      { from: "target/release/bundle/macos/SplitShadow.app.tar.gz", name: `SplitShadow_${version}_macos.app.tar.gz`, keys: [hostKey] },
     ],
     windows: [
       { from: `target/release/bundle/nsis/SplitShadow_${version}_x64-setup.exe`, name: `SplitShadow_${version}_x64-setup.exe`, keys: ["windows-x86_64"] },
