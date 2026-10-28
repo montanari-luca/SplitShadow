@@ -3,6 +3,7 @@
 
 use std::ffi::c_void;
 use std::process::Command;
+use std::sync::Arc;
 
 use core_foundation::base::{CFRelease, CFRetain, CFType, CFTypeRef, TCFType};
 use core_foundation::boolean::CFBoolean;
@@ -412,7 +413,7 @@ impl WindowBackend for MacBackend {
         if unsafe { AXObserverCreate(pid, observer_cb, &mut observer) } != AX_SUCCESS || observer.is_null() {
             return Err("could not create observer".into());
         }
-        let ctx = Box::into_raw(Box::new(WatchCtx { sink, id }));
+        let ctx = Arc::into_raw(Arc::new(WatchCtx { sink, id }));
         for n in ["AXMoved", "AXResized", "AXUIElementDestroyed", "AXWindowMiniaturized"] {
             let name = CFString::new(n);
             unsafe { AXObserverAddNotification(observer, win.0, name.as_concrete_TypeRef(), ctx as *mut c_void) };
@@ -432,7 +433,12 @@ extern "C" fn observer_cb(_obs: ObserverRef, _el: AxRef, notification: CFStringR
     if refcon.is_null() {
         return;
     }
-    let ctx = unsafe { &*(refcon as *const WatchCtx) };
+    // Hold a strong ref for the duration of the call so a concurrent drop of the guard
+    // cannot free the context underneath us.
+    let ctx = unsafe {
+        Arc::increment_strong_count(refcon as *const WatchCtx);
+        Arc::from_raw(refcon as *const WatchCtx)
+    };
     let name = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
     let ev = match name.as_str() {
         "AXMoved" | "AXResized" => WindowEvent::Geometry(ctx.id),
@@ -444,7 +450,7 @@ extern "C" fn observer_cb(_obs: ObserverRef, _el: AxRef, notification: CFStringR
 struct WatchGuard {
     observer: ObserverRef,
     source: CFRunLoopSourceRef,
-    ctx: *mut WatchCtx,
+    ctx: *const WatchCtx,
     _win: AxEl,
 }
 
@@ -455,7 +461,7 @@ impl Drop for WatchGuard {
         unsafe {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), self.source, kCFRunLoopCommonModes);
             CFRelease(self.observer as CFTypeRef);
-            drop(Box::from_raw(self.ctx));
+            drop(Arc::from_raw(self.ctx));
         }
     }
 }

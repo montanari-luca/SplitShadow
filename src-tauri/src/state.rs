@@ -4,11 +4,16 @@ use std::time::Instant;
 
 use crate::settings::Settings;
 use crate::wm::engine::Engine;
+use crate::wm::link::LinkManager;
+use crate::workspaces::Store;
 use crate::wm::{WindowBackend, WindowInfo};
 
 pub struct AppState {
     pub backend: Arc<dyn WindowBackend>,
     pub engine: Engine,
+    pub link: Arc<LinkManager>,
+    pub workspaces: Mutex<Store>,
+    pub workspaces_path: PathBuf,
     /// Window that was frontmost when the palette opened.
     pub target: Mutex<Option<WindowInfo>>,
     pub settings: Mutex<Settings>,

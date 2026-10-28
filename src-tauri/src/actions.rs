@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;
+use crate::wm::link::Axis;
 use crate::wm::{Layout, WindowId, WindowInfo};
+use crate::workspaces::{self, OpenOptions};
 use crate::{palette, windows};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -17,9 +19,9 @@ pub enum Action {
     Restore,
     Split { window_id: WindowId },
     Unsplit,
-    WsSave { name: String },
+    WsSave { name: String, window_ids: Option<Vec<WindowId>> },
     WsOpen { name: String },
-    WsUpdate { name: Option<String> },
+    WsUpdate { name: Option<String>, window_ids: Option<Vec<WindowId>> },
     WsDelete { name: String },
     Settings,
     Quit,
@@ -59,12 +61,13 @@ pub fn context(app: &AppHandle) -> PaletteContext {
         Vec::new()
     };
     let target_id = state.target.lock().unwrap().as_ref().map(|t| t.id);
+    let store = state.workspaces.lock().unwrap();
     PaletteContext {
         windows,
-        workspaces: Vec::new(),
-        active_workspace: None,
+        workspaces: store.names(),
+        active_workspace: store.active.clone(),
         target_id,
-        linked: false,
+        linked: target_id.map(|id| state.link.is_linked(id)).unwrap_or(false),
         update: None,
     }
 }
@@ -121,14 +124,79 @@ pub fn run(app: &AppHandle, action: Action) -> Result<String, String> {
             app.exit(0);
             return Ok(String::new());
         }
-        Action::Split { .. }
-        | Action::Unsplit
-        | Action::WsSave { .. }
-        | Action::WsOpen { .. }
-        | Action::WsUpdate { .. }
-        | Action::WsDelete { .. }
-        | Action::InstallUpdate
-        | Action::CheckUpdate => return Err("Not available yet.".into()),
+        Action::Split { window_id } => {
+            let t = target(&state)?;
+            let partner = state.backend.window(window_id).ok_or("That window is gone.")?;
+            state.link.split(t.id, window_id, Axis::Side, almost)?;
+            let _ = state.backend.focus(window_id);
+            format!("{} and {} are linked", t.app, partner.app)
+        }
+        Action::Unsplit => {
+            state.link.unlink();
+            "Split unlinked".to_string()
+        }
+        Action::WsSave { name, window_ids } => {
+            let name = workspaces::clean_name(&name)?;
+            save_workspace(&state, &name, window_ids.as_deref())?
+        }
+        Action::WsUpdate { name, window_ids } => {
+            let name = match name {
+                Some(n) => n,
+                None => state
+                    .workspaces
+                    .lock()
+                    .unwrap()
+                    .active
+                    .clone()
+                    .ok_or("No active workspace. Open or save one first, or name it: update workspace <name>")?,
+            };
+            if state.workspaces.lock().unwrap().find(&name).is_none() {
+                return Err(format!("No workspace named \"{name}\"."));
+            }
+            save_workspace(&state, &name, window_ids.as_deref())?
+        }
+        Action::WsOpen { name } => {
+            let ws = state
+                .workspaces
+                .lock()
+                .unwrap()
+                .find(&name)
+                .cloned()
+                .ok_or_else(|| format!("No workspace named \"{name}\"."))?;
+            if !state.backend.is_trusted() {
+                return Err("SplitShadow needs Accessibility access to move windows.".into());
+            }
+            // Apps may take a while to launch, so get out of the way first.
+            palette::hide(app);
+            let report = workspaces::open(&*state.backend, &ws, &OpenOptions::default());
+            state.link.unlink();
+            if let Some((i, j)) = ws.link {
+                if let (Some(Some(a)), Some(Some(b))) = (report.ids.get(i), report.ids.get(j)) {
+                    let _ = state.link.link_existing(*a, *b);
+                }
+            }
+            {
+                let mut store = state.workspaces.lock().unwrap();
+                store.active = Some(ws.name.clone());
+                store.save(&state.workspaces_path)?;
+            }
+            return Ok(if report.missing.is_empty() {
+                format!("Opened {}", ws.name)
+            } else {
+                format!("Opened {} (could not find: {})", ws.name, report.missing.join(", "))
+            });
+        }
+        Action::WsDelete { name } => {
+            let mut store = state.workspaces.lock().unwrap();
+            let removed = store.delete(&name)?;
+            store.save(&state.workspaces_path)?;
+            return {
+                drop(store);
+                palette::hide(app);
+                Ok(format!("Deleted {removed}"))
+            };
+        }
+        Action::InstallUpdate | Action::CheckUpdate => return Err("Not available yet.".into()),
     };
 
     palette::hide(app);
@@ -136,4 +204,15 @@ pub fn run(app: &AppHandle, action: Action) -> Result<String, String> {
         let _ = state.backend.focus(t.id);
     }
     Ok(message)
+}
+
+fn save_workspace(state: &AppState, name: &str, ids: Option<&[WindowId]>) -> Result<String, String> {
+    let t = target(state)?;
+    let (windows, link) = workspaces::capture(&*state.backend, t.id, ids, state.link.pair())?;
+    let count = windows.len();
+    let mut store = state.workspaces.lock().unwrap();
+    let existed = store.find(name).is_some();
+    let ws = store.upsert(name, windows, link)?.name.clone();
+    store.save(&state.workspaces_path)?;
+    Ok(format!("{} \"{ws}\" ({count} window{})", if existed { "Updated" } else { "Saved" }, if count == 1 { "" } else { "s" }))
 }

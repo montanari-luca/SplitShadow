@@ -28,14 +28,20 @@ pub fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings)
     Ok(settings)
 }
 
+// Both can block on the OS (Accessibility calls, launching apps), so keep them off the
+// main thread, which also services the window observers.
 #[tauri::command]
-pub fn palette_context(app: AppHandle) -> PaletteContext {
-    actions::context(&app)
+pub async fn palette_context(app: AppHandle) -> Result<PaletteContext, String> {
+    tauri::async_runtime::spawn_blocking(move || actions::context(&app))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn run_action(app: AppHandle, action: Action) -> Result<String, String> {
-    actions::run(&app, action)
+pub async fn run_action(app: AppHandle, action: Action) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || actions::run(&app, action))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

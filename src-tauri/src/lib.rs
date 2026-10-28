@@ -6,6 +6,7 @@ mod settings;
 mod state;
 mod tray;
 mod windows;
+mod workspaces;
 mod wm;
 
 use std::sync::Mutex;
@@ -41,8 +42,12 @@ pub fn run() {
             let settings = Settings::load(&settings_path).sanitized();
             let hotkey = settings.hotkey.clone();
             let backend = wm::create_backend();
+            let workspaces_path = app.path().app_data_dir()?.join("workspaces.json");
             app.manage(AppState {
                 engine: wm::engine::Engine::new(backend.clone()),
+                link: wm::link::LinkManager::new(backend.clone(), true),
+                workspaces: Mutex::new(workspaces::Store::load(&workspaces_path)),
+                workspaces_path,
                 backend,
                 target: Mutex::new(None),
                 settings: Mutex::new(settings),
