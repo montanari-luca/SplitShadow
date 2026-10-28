@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "release:json": "node scripts/release-json.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -30,5 +33,7 @@
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
     "vitest": "^5.0.5"
-  }
+  },
+  "description": "A fast, keyboard-driven window manager for macOS and Windows.",
+  "author": "MintFlow Technologies"
 }

@@ -102,6 +102,26 @@ impl Store {
         Ok(&self.workspaces[idx])
     }
 
+    pub fn rename(&mut self, old: &str, new: &str) -> Result<(), String> {
+        let new = clean_name(new)?;
+        let old_key = old.trim().to_lowercase();
+        let new_key = new.to_lowercase();
+        if new_key != old_key && self.workspaces.iter().any(|w| w.name.to_lowercase() == new_key) {
+            return Err(format!("A workspace named \"{new}\" already exists."));
+        }
+        let i = self
+            .workspaces
+            .iter()
+            .position(|w| w.name.to_lowercase() == old_key)
+            .ok_or_else(|| format!("No workspace named \"{old}\"."))?;
+        let was_active = self.active.as_deref().map(str::to_lowercase) == Some(old_key);
+        self.workspaces[i].name = new.clone();
+        if was_active {
+            self.active = Some(new);
+        }
+        Ok(())
+    }
+
     pub fn delete(&mut self, name: &str) -> Result<String, String> {
         let key = name.trim().to_lowercase();
         let i = self
@@ -395,6 +415,19 @@ mod tests {
         assert_eq!(s.delete("dev").unwrap(), "DEV");
         assert!(s.active.is_none());
         assert!(s.delete("dev").is_err());
+    }
+
+    #[test]
+    fn rename_keeps_active_and_rejects_duplicates() {
+        let mut s = Store::default();
+        s.upsert("Dev", vec![], None).unwrap();
+        s.upsert("Writing", vec![], None).unwrap();
+        s.active = Some("Dev".into());
+        assert!(s.rename("dev", "writing").is_err());
+        s.rename("dev", "Coding").unwrap();
+        assert_eq!(s.active.as_deref(), Some("Coding"));
+        assert!(s.find("dev").is_none());
+        assert!(s.rename("ghost", "x").is_err());
     }
 
     #[test]

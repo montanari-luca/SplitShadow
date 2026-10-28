@@ -68,7 +68,7 @@ pub fn context(app: &AppHandle) -> PaletteContext {
         active_workspace: store.active.clone(),
         target_id,
         linked: target_id.map(|id| state.link.is_linked(id)).unwrap_or(false),
-        update: None,
+        update: crate::updater::pending_version(app),
     }
 }
 
@@ -196,7 +196,18 @@ pub fn run(app: &AppHandle, action: Action) -> Result<String, String> {
                 Ok(format!("Deleted {removed}"))
             };
         }
-        Action::InstallUpdate | Action::CheckUpdate => return Err("Not available yet.".into()),
+        Action::CheckUpdate => {
+            let st = tauri::async_runtime::block_on(crate::updater::check(app));
+            return match (st.error, st.version) {
+                (Some(e), _) => Err(e),
+                (None, Some(v)) => Ok(format!("Version {v} is available")),
+                (None, None) => Ok(format!("SplitShadow {} is up to date", st.current)),
+            };
+        }
+        Action::InstallUpdate => {
+            palette::hide(app);
+            return tauri::async_runtime::block_on(crate::updater::install(app)).map(|_| String::new());
+        }
     };
 
     palette::hide(app);

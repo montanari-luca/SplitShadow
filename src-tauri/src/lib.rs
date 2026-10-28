@@ -5,6 +5,7 @@ mod palette;
 mod settings;
 mod state;
 mod tray;
+mod updater;
 mod windows;
 mod workspaces;
 mod wm;
@@ -41,6 +42,7 @@ pub fn run() {
             let settings_path = app.path().app_config_dir()?.join("settings.json");
             let settings = Settings::load(&settings_path).sanitized();
             let hotkey = settings.hotkey.clone();
+            let first_run = !settings.onboarded;
             let backend = wm::create_backend();
             let workspaces_path = app.path().app_data_dir()?.join("workspaces.json");
             app.manage(AppState {
@@ -55,6 +57,7 @@ pub fn run() {
                 shown_at: Mutex::new(None),
             });
 
+            app.manage(updater::UpdateState::default());
             let handle = app.handle().clone();
             if let Some(w) = palette::window(&handle) {
                 apply_glass(&w);
@@ -70,6 +73,10 @@ pub fn run() {
                 eprintln!("{e}");
             }
             tray::build(&handle)?;
+            updater::spawn_periodic(handle.clone());
+            if first_run {
+                windows::open_settings(&handle, Some("welcome"));
+            }
             Ok(())
         })
         .build(tauri::generate_context!())
