@@ -9,6 +9,8 @@
 A tiny, lightning-fast window manager for **macOS** and **Windows**.<br/>
 Press a shortcut, type what you want, and your windows snap into place.
 
+> **NOTE**: [Conbind](https://github.com/montanari-luca/Conbind?tab=readme-ov-file) is out, and it has these, and thousands of additional capabilities. This product, is for those who just want a light window manager, Conbind is for those who want the whole power of Spotlight/Raycast in one app. 
+
 [**Download**](https://github.com/montanari-luca/MintFlow-Releases/releases) &nbsp;·&nbsp; [How it works](#how-it-works) &nbsp;·&nbsp; [What you can type](#what-you-can-type) &nbsp;·&nbsp; [FAQ](#faq)
 
 ![macOS](https://img.shields.io/badge/macOS-12%2B-black?logo=apple&logoColor=white)
